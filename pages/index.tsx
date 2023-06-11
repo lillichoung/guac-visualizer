@@ -68,6 +68,28 @@ export default function Home() {
   const packageLoading = packageTypesQuery.loading;
   const packageError = packageTypesQuery.error;
 
+  useEffect(() => {
+    if (packageError || packageLoading) {
+      return;
+    }
+    if (router.query.path != null && !renderedInitialGraph) {
+      const nodeIds = router.query.path.split(",");
+      let newGraphData: GraphDataWithMetadata = { nodes: [], links: [] };
+
+      const promises = nodeIds.map((nodeId: string) =>
+        GetNodeById(nodeId).then((res) => {
+          const parsedNode = ParseNode(res.node as NodeFragment);
+          ParseAndFilterGraph(newGraphData, parsedNode);
+        })
+      );
+
+      Promise.all(promises).then(() => {
+        setGraphData(newGraphData);
+        setRenderedInitialGraph(true);
+      });
+    }
+  }, [packageError, packageLoading]);
+
   const router = useRouter();
 
   const handleArtifactClick = () => {
@@ -109,19 +131,6 @@ export default function Home() {
     packageTypes = sortablePackageData
       .sort((a, b) => a.type.localeCompare(b.type))
       .map((t) => ({ label: t.type, value: t.type }));
-
-    if (router.query.path != null && !renderedInitialGraph) {
-      const nodeIds = router.query.path.split(",");
-
-      const graphData: GraphDataWithMetadata = { nodes: [], links: [] };
-      nodeIds.forEach((nodeId: string) => {
-        GetNodeById(nodeId).then((res) => {
-          ParseAndFilterGraph(graphData, ParseNode(res.node as NodeFragment));
-          setGraphData(graphData);
-        });
-      });
-      setRenderedInitialGraph(true);
-    }
   }
 
   return (
